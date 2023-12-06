@@ -396,9 +396,10 @@ std::array<double, 4> OpenCR::get_joint_efforts()
   //                                       in no load condition.
   // applied_voltage = 12.0
   // max no load speed = 46 rpm
+  // convert rpm/v to rad/s/v = rpm/v *2pi/60
 
   for (uint8_t i = 0; i < currents.size(); i++) {
-    torques[i] = 1.0/(46.0 / 12)*(currents[i]*2.69 *0.001);
+    torques[i] = 1.0/(46.0 / 12 * 2 * 3.1415926535 / 60)*(currents[i]*2.69 *0.001);
   }
 
   return torques;
@@ -441,7 +442,7 @@ double OpenCR::get_gripper_effort()
     opencr_control_table.present_current_gripper.address,
     opencr_control_table.present_current_gripper.length);
 
-  return torque = 1.0/(46.0 / 12)*(current*2.69 *0.001);
+  return torque = 1.0/(46.0 / 12 * 2 * 3.1415926535 / 60)*(current*2.69 *0.001);
 }
 
 bool OpenCR::set_joints_variables(

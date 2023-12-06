@@ -31,6 +31,14 @@ from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
 
+def controller_spawner(name, *args):
+        return Node(
+            package="controller_manager",
+            executable="spawner",
+            output="screen",
+            arguments=[name] + [a for a in args],
+        )
+
 def generate_launch_description():
     declared_arguments = []
     declared_arguments.append(
@@ -131,10 +139,19 @@ def generate_launch_description():
         ],
         remappings=[
             ('~/cmd_vel_unstamped', 'cmd_vel'),
-            ('~/odom', 'odom')
+            ('~/odom', 'odom'),
+            ('motion_control_handle/target_frame', 'target_frame'),
+            ('cartesian_motion_controller/target_frame', 'target_frame'),
+            ('cartesian_compliance_controller/target_frame', 'target_frame'),
+            ('cartesian_force_controller/target_wrench', 'target_wrench'),
+            ('cartesian_compliance_controller/target_wrench', 'target_wrench'),
+            ('cartesian_force_controller/ft_sensor_wrench', 'ft_sensor_wrench'),
+            ('cartesian_compliance_controller/ft_sensor_wrench', 'ft_sensor_wrench')
         ],
-        output="both",
-        condition=UnlessCondition(use_sim))
+        output="both",)
+        #condition=UnlessCondition(use_sim))
+
+
 
     robot_state_pub_node = Node(
         package='robot_state_publisher',
@@ -151,90 +168,138 @@ def generate_launch_description():
         condition=IfCondition(start_rviz)
     )
 
-    joint_state_broadcaster_spawner = Node(
-        package='controller_manager',
-        executable='spawner',
-        arguments=['joint_state_broadcaster', '--controller-manager', '/controller_manager'],
-        output='screen',
-    )
 
-    diff_drive_controller_spawner = Node(
-        package='controller_manager',
-        executable='spawner',
-        arguments=['diff_drive_controller', '-c', '/controller_manager'],
-        output='screen',
-        condition=UnlessCondition(use_sim)
-    )
+    # Active controllers
+    active_list = [
+            "joint_state_broadcaster",
+            "diff_drive_controller",
+            "imu_broadcaster",
+            "arm_controller",
+            "gripper_controller",
+            # "force_torque_sensor_broadcaster",
+            # "scaled_joint_trajectory_controller"
+            ]
+    active_spawners = [controller_spawner(controller) for controller in active_list]
 
-    imu_broadcaster_spawner = Node(
-        package='controller_manager',
-        executable='spawner',
-        arguments=['imu_broadcaster'],
-        output='screen',
-    )
+    # Inactive controllers
+    inactive_list = [
+            "cartesian_compliance_controller",
+            "cartesian_force_controller",
+            "cartesian_motion_controller",
+            "motion_control_handle"
+            ]
+    inactive_spawners = [controller_spawner(controller, "--inactive") for controller in inactive_list]
 
-    arm_controller_spawner = Node(
-        package='controller_manager',
-        executable='spawner',
-        arguments=['arm_controller'],
-        output='screen',
-    )
 
-    gripper_controller_spawner = Node(
-        package='controller_manager',
-        executable='spawner',
-        arguments=['gripper_controller'],
-        output='screen',
-    )
 
-    delay_rviz_after_joint_state_broadcaster_spawner = RegisterEventHandler(
-        event_handler=OnProcessExit(
-            target_action=joint_state_broadcaster_spawner,
-            on_exit=[rviz_node],
-        )
-    )
 
-    delay_diff_drive_controller_spawner_after_joint_state_broadcaster_spawner = \
-        RegisterEventHandler(
-            event_handler=OnProcessExit(
-                target_action=joint_state_broadcaster_spawner,
-                on_exit=[diff_drive_controller_spawner],
-            )
-        )
 
-    delay_imu_broadcaster_spawner_after_joint_state_broadcaster_spawner = \
-        RegisterEventHandler(
-            event_handler=OnProcessExit(
-                target_action=joint_state_broadcaster_spawner,
-                on_exit=[imu_broadcaster_spawner],
-            )
-        )
+    # joint_state_broadcaster_spawner = Node(
+    #     package='controller_manager',
+    #     executable='spawner',
+    #     arguments=['joint_state_broadcaster', '--controller-manager', '/controller_manager'],
+    #     output='screen',
+    # )
 
-    delay_arm_controller_spawner_after_joint_state_broadcaster_spawner = \
-        RegisterEventHandler(
-            event_handler=OnProcessExit(
-                target_action=joint_state_broadcaster_spawner,
-                on_exit=[arm_controller_spawner],
-            )
-        )
+    # diff_drive_controller_spawner = Node(
+    #     package='controller_manager',
+    #     executable='spawner',
+    #     arguments=['diff_drive_controller', '-c', '/controller_manager'],
+    #     output='screen',
+    #     #condition=UnlessCondition(use_sim)
+    # )
 
-    delay_gripper_controller_spawner_after_joint_state_broadcaster_spawner = \
-        RegisterEventHandler(
-            event_handler=OnProcessExit(
-                target_action=joint_state_broadcaster_spawner,
-                on_exit=[gripper_controller_spawner],
-            )
-        )
+    # imu_broadcaster_spawner = Node(
+    #     package='controller_manager',
+    #     executable='spawner',
+    #     arguments=['imu_broadcaster'],
+    #     output='screen',
+    # )
 
-    nodes = [
-        control_node,
-        robot_state_pub_node,
-        joint_state_broadcaster_spawner,
-        delay_rviz_after_joint_state_broadcaster_spawner,
-        delay_diff_drive_controller_spawner_after_joint_state_broadcaster_spawner,
-        delay_imu_broadcaster_spawner_after_joint_state_broadcaster_spawner,
-        delay_arm_controller_spawner_after_joint_state_broadcaster_spawner,
-        delay_gripper_controller_spawner_after_joint_state_broadcaster_spawner,
-    ]
+    # arm_controller_spawner = Node(
+    #     package='controller_manager',
+    #     executable='spawner',
+    #     arguments=['arm_controller'],
+    #     output='screen',
+    # )
+
+    # gripper_controller_spawner = Node(
+    #     package='controller_manager',
+    #     executable='spawner',
+    #     arguments=['gripper_controller'],
+    #     output='screen',
+    # )
+
+    # compliance_controller_spawner = Node(
+    #     package='controller_manager',
+    #     executable='spawner',
+    #     arguments=['cartesian_compliance_controller'],
+    #     output='screen',
+    # )
+    
+
+    # delay_rviz_after_joint_state_broadcaster_spawner = RegisterEventHandler(
+    #     event_handler=OnProcessExit(
+    #         target_action=joint_state_broadcaster_spawner,
+    #         on_exit=[rviz_node],
+    #     )
+    # )
+
+    # delay_diff_drive_controller_spawner_after_joint_state_broadcaster_spawner = \
+    #     RegisterEventHandler(
+    #         event_handler=OnProcessExit(
+    #             target_action=joint_state_broadcaster_spawner,
+    #             on_exit=[diff_drive_controller_spawner],
+    #         )
+    #     )
+
+    # delay_imu_broadcaster_spawner_after_joint_state_broadcaster_spawner = \
+    #     RegisterEventHandler(
+    #         event_handler=OnProcessExit(
+    #             target_action=joint_state_broadcaster_spawner,
+    #             on_exit=[imu_broadcaster_spawner],
+    #         )
+    #     )
+
+    # delay_arm_controller_spawner_after_joint_state_broadcaster_spawner = \
+    #     RegisterEventHandler(
+    #         event_handler=OnProcessExit(
+    #             target_action=joint_state_broadcaster_spawner,
+    #             on_exit=[arm_controller_spawner],
+    #         )
+    #     )
+
+    # delay_gripper_controller_spawner_after_joint_state_broadcaster_spawner = \
+    #     RegisterEventHandler(
+    #         event_handler=OnProcessExit(
+    #             target_action=joint_state_broadcaster_spawner,
+    #             on_exit=[gripper_controller_spawner],
+    #         )
+    #     )
+
+    # delay_compliance_controller_spawner_after_joint_state_broadcaster_spawner = \
+    #     RegisterEventHandler(
+    #         event_handler=OnProcessExit(
+    #             target_action=joint_state_broadcaster_spawner,
+    #             on_exit=[compliance_controller_spawner],
+    #         )
+    #     )
+
+    # nodes = [
+    #     control_node,
+    #     robot_state_pub_node,
+    #     joint_state_broadcaster_spawner,
+    #     delay_rviz_after_joint_state_broadcaster_spawner,
+    #     delay_diff_drive_controller_spawner_after_joint_state_broadcaster_spawner,
+    #     delay_imu_broadcaster_spawner_after_joint_state_broadcaster_spawner,
+    #     delay_arm_controller_spawner_after_joint_state_broadcaster_spawner,
+    #     delay_gripper_controller_spawner_after_joint_state_broadcaster_spawner,
+    #     delay_compliance_controller_spawner_after_joint_state_broadcaster_spawner
+    # ]
+
+
+
+    # Nodes to start
+    nodes = [rviz_node, control_node, robot_state_pub_node] + active_spawners + inactive_spawners
 
     return LaunchDescription(declared_arguments + nodes)
